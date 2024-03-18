@@ -7,7 +7,13 @@
     "url": "https://github.com/PaulRBerg"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.1"
+    "@openzeppelin/contracts": "^5.0.1",
+    "@uniswap/v2-core": "github:uniswap/v2-core",
+    "@uniswap/v2-periphery": "github:uniswap/v2-periphery",
+    "@uniswap/v3-core": "github:uniswap/v3-core",
+    "@uniswap/v3-periphery": "github:uniswap/v3-periphery",
+    "ds-test": "github:dapphub/ds-test",
+    "openzeppelin-solidity": "github:OpenZeppelin/openzeppelin-contracts-upgradeable"
   },
   "devDependencies": {
     "@prb/test": "^0.6.4",
