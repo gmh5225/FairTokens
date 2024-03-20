@@ -208,24 +208,3 @@ This project is licensed under MIT.
 ## Supported Chains
 
 Networks where Uniswap V3 and its forks (e.g. PancakeSwap V3) are deployed:
-
-- Ethereum
-- Arbitrum
-- Optimism
-- Polygon
-- Base
-- BNB
-- Avalanche
-
-// Tests
-
-// Functions
-- create
-- addLiquidity
-- removeLiquidity
-- collectFeesAndclaimRewards
-- collectProtocolFees
-- setProtocolFeesPercentage
-- setProtocolFeesReceiver
-- whitelistAnchorToken
-- transfer LP

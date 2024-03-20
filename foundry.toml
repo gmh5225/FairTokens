@@ -10,7 +10,8 @@
   optimizer_runs = 10_000
   out = "out"
   script = "script"
-  solc = "0.8.23"
+  solc = "0.8.24"
+  evm_version= "cancun"
   src = "src"
   test = "test"
 
