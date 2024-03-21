@@ -39,6 +39,23 @@ contract ManagerTest is Base {
         _addLiquidity(amount);
     }
 
+    function test_removeLP_abovePrice(uint256 amount) external create(amount) {
+        //
+        amount = bound(amount, 1000, 10_000 ether);
+        vm.assume(getAmount0(amount) > 0 && getAmount1(amount) > 0);
+        uint128 liquidity = uint128(_addLiquidity(alice_lp, amount));
+        //
+        uint256 buyAmount = bound(amount, amount / 3, amount / 2);
+        uint256 amountOut = _swap(true, bob_t, buyAmount);
+        address anchorToken = m.getTokenInfo(id).anchorToken;
+        uint256 pre = IERC20(anchorToken).balanceOf(alice_lp);
+        _removeLiquidity(alice_lp, liquidity);
+        assertApproxEqRel(IERC20(anchorToken).balanceOf(alice_lp) - pre, amount, 1 ether / 10**8);
+        assertEq(m.balanceOf(alice_lp, id), 0);
+        assertEq(m.getUserInfo(id, alice_lp).addedAmount, 0);
+        
+    }
+
     function test_removeLP(uint256 amount) external create(amount) {
         amount = bound(amount, 1000, 10_000 ether);
         vm.assume(getAmount0(amount) > 0 && getAmount1(amount) > 0);
@@ -136,33 +153,39 @@ contract ManagerTest is Base {
         assertEq(m.balanceOf(bob_t, id), liquidity);
     }
 
-    // function test_collectFeesAndclaimRewards(uint256 amount) external create(amount) {
-    //     //
-    //     amount = bound(amount, 1000, 10_000 ether);
-    //     vm.assume(getAmount0(amount) > 0 && getAmount1(amount) > 0);
-    //     uint256 liquidity = _addLiquidity(alice_lp, amount);
-    //     assertGt(liquidity, 0);
-    //     uint256 buyAmount = bound(amount, amount / 3, amount / 2);
-    //     uint256 amountOut = _swap(true, bob_t, buyAmount);
-    //     console2.log("amountOut", amountOut);
-    //     _swap(false, bob_t, amountOut);
-    //     (uint256 collected0, uint256 collected1,,) = m.collectFeesAndclaimRewards(id, true, false);
-    //     console2.log("collected", collected0, collected1);
-    //     assertGt(collected0, 0);
-    //     assertGt(collected1, 0);
-    //     skip(m.rewardsDuration());
-    //     address token = m.getTokenInfo(id).token;
-    //     address anchorToken = m.getTokenInfo(id).anchorToken;
-    //     (address t0, address t1) = token < anchorToken ? (token, anchorToken) : (anchorToken, token);
-    //     uint256 pre0 = IERC20(t0).balanceOf(alice_lp);
-    //     uint256 pre1 = IERC20(t1).balanceOf(alice_lp);
-    //     vm.prank(alice_lp);
-    //     (,, uint256 reward0, uint256 reward1) = m.collectFeesAndclaimRewards(id, false, true);
-    //     if (reward0 > 0) {
-    //         assertTrue(IERC20(t0).balanceOf(alice_lp) > pre0);
-    //     }
-    //     if (reward1 > 0) {
-    //         assertTrue(IERC20(t0).balanceOf(alice_lp) > pre1);
-    //     }
-    // }
+    function test_collectFeesAndclaimRewards(uint256 amount) external create(amount) {
+        //
+        address token = m.getTokenInfo(id).token;
+        address anchorToken = m.getTokenInfo(id).anchorToken;
+
+        amount = bound(amount, 1000, 10_000 ether);
+        vm.assume(getAmount0(amount) > 0 && getAmount1(amount) > 0);
+        uint256 liquidity = _addLiquidity(alice_lp, amount);
+        assertGt(liquidity, 0);
+        uint256 buyAmount = bound(amount, amount / 3, amount / 2);
+        uint256 amountOut = _swap(true, bob_t, buyAmount);
+        console2.log("amountOut", amountOut);
+        // _swap(false, bob_t, amountOut);
+        (uint256 collected0, uint256 collected1,,) = m.collectFeesAndclaimRewards(id, true, false);
+        console2.log("collected", collected0, collected1);
+        if (anchorToken < token) {
+            assertGt(collected0, 0);
+        } else {
+            assertGt(collected1, 0);
+        }
+        skip(m.rewardsDuration());
+ 
+        (address t0, address t1) = token < anchorToken ? (token, anchorToken) : (anchorToken, token);
+        uint256 pre0 = IERC20(t0).balanceOf(alice_lp);
+        uint256 pre1 = IERC20(t1).balanceOf(alice_lp);
+        vm.prank(alice_lp);
+        (,, uint256 reward0, uint256 reward1) = m.collectFeesAndclaimRewards(id, false, true);
+        if (reward0 > 0) {
+            console2.log("r0", IERC20(t0).balanceOf(alice_lp), pre0);
+            assertTrue(IERC20(t0).balanceOf(alice_lp) > pre0);
+        }
+        if (reward1 > 0) {
+            assertTrue(IERC20(t1).balanceOf(alice_lp) > pre1);
+        }
+    }
 }

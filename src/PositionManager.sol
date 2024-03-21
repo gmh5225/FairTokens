@@ -15,23 +15,18 @@ import { Ownable2Step, Ownable } from "@openzeppelin/contracts/access/Ownable2St
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+
 // TODO emit events
-/// @title Position manager contract, responsible in managing creation of new tokens, adding and removal liquidity.
+/// @title Tokens position manager contract
 /// @author @codeislight
-/// @notice 
+/// @notice used in managing creation of new tokens, adding and removal liquidity, and collecting trading fees.
 contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
     using SafeERC20 for IERC20;
-
-    // INonfungiblePositionManager constant NPM =
-    // INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
-    // IUniswapV3Factory constant factory = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
-    // address public constant NATIVE = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     INonfungiblePositionManager public immutable NPM;
     IUniswapV3Factory public immutable factory;
     address immutable ERC20IMPL;
     address public immutable NATIVE;
-
     int24 constant MIN_TICK = -887200; // 887272;
     int24 constant MAX_TICK = 887200; // 887272;
     uint160 constant sqrtRatioAX96 = 4295128739;
@@ -59,7 +54,7 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
         IERC20(NATIVE).approve(address(NPM), type(uint256).max);
     }
 
-    // external functions
+    // ====================== external functions =================================
 
     /// creates a new token, new univ3 pool, and mints a new position
     /// @param name new token's name
@@ -92,6 +87,7 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
     /// @param receiver added LP receiver
     /// @dev if `receiver` is address(0), the receiver defaults to sender
     function addLiquidity(uint256 id, uint256 minimumAmount0, uint256 minimumAmount1, uint256 amount, address receiver) external payable updateReward(id, receiver) returns(uint128 liquidity) {
+        if (receiver == address(0)) receiver = msg.sender;
         address anchorToken = tokenInfo[id].anchorToken;
         require(anchorToken != address(0));
         if (msg.value > 0) {
@@ -103,7 +99,6 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
             IERC20(anchorToken).safeTransferFrom(msg.sender, address(this), amount);
         }
 
-        if (receiver == address(0)) receiver = msg.sender;
         address token = tokenInfo[id].token;
         uint256 amount0;
         uint256 amount1;
@@ -111,7 +106,6 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
         address token0;
         address token1;
         (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(tokenInfo[id].pool).slot0();
-        console2.log("check0");
         if (token < anchorToken) {
             token0 = token;
             token1 = anchorToken;
@@ -129,8 +123,6 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
         }
 
         require(amount0 > 0 && amount1 > 0, "insufficient amount");
-        console2.log("currentSqrtPrice", sqrtPriceX96);
-        console2.log("amounts", amount0, amount1, minted);
         ERC20Impl(token).mint(minted);
         uint tokenId = tokenInfo[id].tokenId;
         if (tokenId == 0) {
@@ -153,7 +145,7 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
         } else {
             (liquidity,,) = NPM.increaseLiquidity(
                 INonfungiblePositionManager.IncreaseLiquidityParams({
-                    tokenId: tokenInfo[id].tokenId,
+                    tokenId: tokenId,
                     amount0Desired: amount0,
                     amount1Desired: amount1,
                     amount0Min: minimumAmount0,
@@ -165,7 +157,6 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
 
         userInfo[id][receiver].addedAmount += amount;
         tokenInfo[id].liquidity += liquidity;
-        // _stake(id, liquidity, receiver);
         _mint(receiver, id, liquidity, new bytes(0));
     }
 
@@ -179,12 +170,10 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
     function removeLiquidity(uint256 id, uint128 lpAmount, uint256 minAmount0, uint256 minAmount1, address receiver) external updateReward(id, msg.sender) {
         if (receiver == address(0)) receiver = msg.sender;
         address token = tokenInfo[id].token;
-        require(token != address(0) && lpAmount > 0);
         address anchorToken = tokenInfo[id].anchorToken;
-        address pool = tokenInfo[id].pool;
-        uint128 tokenId = tokenInfo[id].tokenId;
+        require(token != address(0) && lpAmount > 0, "UninitializedOrZeroAmount");
 
-        (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(pool).slot0();
+        (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(tokenInfo[id].pool).slot0();
         (uint256 a0, uint256 a1) =
             LiquidityAmounts.getAmountsForLiquidity(sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, lpAmount);
         uint256 anchorAmount = anchorToken < token ? a0 : a1;
@@ -192,47 +181,56 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
         uint256 addedAmount = userInfo[id][msg.sender].addedAmount;
         // expected amount according to the time LP was added
         uint256 expectedAmount = lpAmount * addedAmount / addedLP;
+
         userInfo[id][msg.sender].addedAmount = addedAmount - expectedAmount;
+        _burn(msg.sender, id, lpAmount);
 
         // in case the price is greater, only burn enough LP to get back added anchor tokens
         if (anchorAmount >= expectedAmount) {
-            lpAmount = uint128(expectedAmount * addedLP / addedAmount);
+            lpAmount = uint128(expectedAmount * addedLP / anchorAmount);
         }
 
         tokenInfo[id].liquidity -= uint128(lpAmount);
-        _burn(msg.sender, id, lpAmount);
-        (a0, a1) = NPM.decreaseLiquidity(
+
+        (removedAmount0, removedAmount1) = NPM.decreaseLiquidity(
             INonfungiblePositionManager.DecreaseLiquidityParams({
-                tokenId: tokenId,
+                tokenId: tokenInfo[id].tokenId,
                 liquidity: lpAmount,
                 amount0Min: minAmount0,
                 amount1Min: minAmount1,
                 deadline: block.timestamp
             })
         );
+
+        // collect and distribute trading fees
         (uint collectedA0, uint collectedA1) = _collect(id);
-        collectedA0 -= a0;
-        collectedA1 -= a1;
+        collectedA0 -= removedAmount0;
+        collectedA1 -= removedAmount1;
         _distribute(id, collectedA0, collectedA1);
+    
         (uint256 amount0, uint256 amount1) = _getRewardWithoutTransfer(id);
         if (token < anchorToken) {
-            ERC20Impl(token).burn(a0);
-            amount1 += a1;
+            (t0, t1) = (token, anchorToken);
+            ERC20Impl(token).burn(removedAmount0);
+            amount1 += removedAmount1;
         } else {
-            ERC20Impl(token).burn(a1);
-            amount0 += a0;
-        }
-        (address t0, address t1) = token < anchorToken ? (token, anchorToken) : (anchorToken, token);
-
-        if (amount0 > 0) {
-            IERC20(t0).safeTransfer(receiver, amount0);
+            (t0, t1) = (anchorToken, token);
+            ERC20Impl(token).burn(removedAmount1);
+            amount0 += removedAmount0;
         }
 
-        if (amount1 > 0) {
-            IERC20(t1).safeTransfer(receiver, amount1);
-        }
+        if (amount0 > 0) IERC20(t0).safeTransfer(receiver, amount0);
+        if (amount1 > 0) IERC20(t1).safeTransfer(receiver, amount1);
     }
 
+    /// @notice used to collect trading fees and claim rewards
+    /// @param id created token pool ERC1155 id
+    /// @param collectFees whether to collect and distribute trading fees
+    /// @param claimReward whether to claim trading fees rewards for the caller
+    /// @return collectedFees0 collected trading fees for token0
+    /// @return collectedFees1 collected trading fees for token1
+    /// @return reward0 amount of token rewards for token0
+    /// @return reward1 amount of token rewards for token1
     function collectFeesAndclaimRewards(uint256 id, bool collectFees, bool claimReward) external returns(uint collectedFees0, uint collectedFees1, uint reward0, uint reward1) {
         require(tokenInfo[id].token != address(0));
         if(collectFees) (collectedFees0, collectedFees1) = _collectFeesAndDistribute(id);
@@ -240,6 +238,8 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
     }
 
 
+    /// @notice collects protocol fees and sends them to protocolFeesReceiver
+    /// @param tokens array of token addresses
     function collectProtocolFees(address[] calldata tokens) external {
         uint len = tokens.length;
         for(uint i; i < len; i++) {
@@ -262,18 +262,25 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
         return IERC721Receiver.onERC721Received.selector;
     }
 
-    // owner restricted-access
+    // ====================== restricted functions =================================
 
+    /// @notice sets percentage for protocol fees charged on trading fees
+    /// @param value of protocol fees pip percentage  
     function setProtocolFeesPercentage(uint256 value) external onlyOwner {
         require(value <= MAX_FEE_PERCENTAGE);
         protocolFeesPercentage = value;
     }
 
+    /// @notice sets the protocol fees receiver address
+    /// @param receiver address of protocol fees receiver
     function setProtocolFeesReceiver(address receiver) external onlyOwner {
         require(receiver != address(0));
-        protocolFeesReceiver = receiver;
-    
+        protocolFeesReceiver = receiver;    
     }
+
+    /// @notice used to whitlist supported anchor tokens
+    /// @param token whitelist address
+    /// @param isWhitelist whether to whitelist anchor token address
     function whitelistAnchorToken(address token, bool isWhitelist) external onlyOwner {
         require(whitelistedAnchorTokens[token] != isWhitelist);
         require(token != address(0) && token != NATIVE);
@@ -282,7 +289,7 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
         
     }
 
-    // internal functions
+    // ====================== internal functions =================================
     function _updateWithAcceptanceCheck(
         address from,
         address to,
@@ -294,7 +301,6 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
         override
     {
         if (from != address(0) && to != address(0)) {
-            // TODO update state before transfer
             for (uint256 i; i < ids.length; i++) {
                 uint256 amountLP = values[i];
                 if (amountLP > 0) {
@@ -318,7 +324,7 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
             INonfungiblePositionManager.CollectParams({
                 tokenId: tokenInfo[id].tokenId,
                 recipient: address(this),
-                amount0Max: type(uint128).max, //TODO check proper value
+                amount0Max: type(uint128).max,
                 amount1Max: type(uint128).max
             })
         );
@@ -343,7 +349,6 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
 
     function _collectFeesAndDistribute(uint256 id) internal override updateReward(id, address(0)) returns(uint amount0, uint amount1) {
         (amount0, amount1) = _collect(id);
-        console2.log("rewards",amount0, amount1);
         _distribute(id, amount0, amount1);
     }
 }

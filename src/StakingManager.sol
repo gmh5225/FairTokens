@@ -165,9 +165,7 @@ abstract contract StakingManager is ERC1155, ReentrancyGuard, Storage {
     /// @param id Pool identifier to distribute rewards
     /// @param amount0reward Amount0 of reward tokens to distribute
     /// @param amount1reward Amount1 of reward tokens to distribute
-    function _notifyRewardAmount(uint256 id, uint256 amount0reward, uint256 amount1reward) internal 
-    // updateReward(address(0))
-    {
+    function _notifyRewardAmount(uint256 id, uint256 amount0reward, uint256 amount1reward) internal {
         uint256 periodFinish = tokenInfo[id].periodFinish;
         if (block.timestamp >= periodFinish) {
             // If no reward is currently being distributed, the new rate is just `reward / duration`

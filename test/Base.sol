@@ -78,6 +78,13 @@ abstract contract Base is IUniswapV3SwapCallback, IERC1155Receiver, Test {
         assertEq(lpAmount, preLP - m.balanceOf(address(this), id));
     }
 
+    function _removeLiquidity(address user, uint128 lpAmount) internal {
+        uint256 preLP = m.balanceOf(user, id);
+        vm.prank(user);
+        m.removeLiquidity(id, lpAmount, 0, 0, user);
+        assertEq(lpAmount, preLP - m.balanceOf(user, id));
+    }
+
     function _swap(bool isBuy, address user, uint256 amount) internal returns (uint256 amountOut) {
         address tokenIn = isBuy ? NATIVE : m.getTokenInfo(id).token;
         address tokenOut = isBuy ? m.getTokenInfo(id).token : NATIVE;
@@ -127,11 +134,11 @@ abstract contract Base is IUniswapV3SwapCallback, IERC1155Receiver, Test {
     }
 
     function onERC1155Received(
-        address operator,
-        address from,
-        uint256 id,
-        uint256 value,
-        bytes calldata data
+        address ,
+        address ,
+        uint256 ,
+        uint256 ,
+        bytes calldata
     )
         external
         override
