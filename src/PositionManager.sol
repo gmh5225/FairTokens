@@ -311,7 +311,7 @@ contract PositionManager is IERC721Receiver, Ownable2Step, StakingManager {
                     uint256 fromAddedAmount = userInfo[id][from].addedAmount;
                     uint256 totalLP = tokenInfo[id].liquidity;
                     uint256 reducedAmount = fromAddedAmount * amountLP / totalLP;
-                    userInfo[id][from].addedAmount -= reducedAmount;
+                    userInfo[id][from].addedAmount = fromAddedAmount - reducedAmount;
                     userInfo[id][to].addedAmount += reducedAmount;
                 }
             }
