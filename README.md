@@ -1,210 +1,40 @@
-# Foundry Template [![Open in Gitpod][gitpod-badge]][gitpod] [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry] [![License: MIT][license-badge]][license]
+# FairTokens - platform to launch tokens with aligned incentives
 
-[gitpod]: https://gitpod.io/#https://github.com/PaulRBerg/foundry-template
-[gitpod-badge]: https://img.shields.io/badge/Gitpod-Open%20in%20Gitpod-FFB45B?logo=gitpod
-[gha]: https://github.com/PaulRBerg/foundry-template/actions
-[gha-badge]: https://github.com/PaulRBerg/foundry-template/actions/workflows/ci.yml/badge.svg
-[foundry]: https://getfoundry.sh/
-[foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
-[license]: https://opensource.org/licenses/MIT
-[license-badge]: https://img.shields.io/badge/License-MIT-blue.svg
+![image](imgs/fair-tokens.png)
 
-A Foundry-based template for developing Solidity smart contracts, with sensible defaults.
+## Overview
 
-## What's Inside
-
-- [Forge](https://github.com/foundry-rs/foundry/blob/master/forge): compile, test, fuzz, format, and deploy smart
-  contracts
-- [Forge Std](https://github.com/foundry-rs/forge-std): collection of helpful contracts and cheatcodes for testing
-- [PRBTest](https://github.com/PaulRBerg/prb-test): modern collection of testing assertions and logging utilities
-- [Prettier](https://github.com/prettier/prettier): code formatter for non-Solidity files
-- [Solhint](https://github.com/protofire/solhint): linter for Solidity code
-
-## Getting Started
-
-Click the [`Use this template`](https://github.com/PaulRBerg/foundry-template/generate) button at the top of the page to
-create a new repository with this repo as the initial state.
-
-Or, if you prefer to install the template manually:
-
-```sh
-$ mkdir my-project
-$ cd my-project
-$ forge init --template PaulRBerg/foundry-template
-$ bun install # install Solhint, Prettier, and other Node.js deps
-```
-
-If this is your first time with Foundry, check out the
-[installation](https://github.com/foundry-rs/foundry#installation) instructions.
+FairTokens reshape the usual fair tokens models, by creating tokens that are minted/burnt on demand when adding LPing and removing LP, which only require to add the anchor token (WETH, USDC..), and LP is initialized at a baseline price in Uniswap v3 1% pool. LPs can only remove at most what they initially put in, thus ensuring that traders will always find some liquidity to sell back into. As well as anyone can take part of LPing without the need to own the token, which reduce cost by 50% to take part of LPing to earn trading fees.
 
 ## Features
 
-This template builds upon the frameworks and libraries mentioned above, so please consult their respective documentation
-for details about their specific features.
+- rug-pulls prevention.
+- establishing a baseline price.
+- token buyers are assured to have liquidity to sell back into.
+- anyone can take part of liquidity provision and earn trading fees.
+- reducing cost of LPing by 50%.
+- platform fees charged on trading fees.
 
-For example, if you're interested in exploring Foundry in more detail, you should look at the
-[Foundry Book](https://book.getfoundry.sh/). In particular, you may be interested in reading the
-[Writing Tests](https://book.getfoundry.sh/forge/writing-tests.html) tutorial.
+## Drawbacks
 
-### Sensible Defaults
+- LPers might inccur impermanent loss.
+- on LP removal, liquidity becomes realtively thinner.
 
-This template comes with a set of sensible default configurations for you to use. These defaults can be found in the
-following files:
+## To do
 
-```text
-├── .editorconfig
-├── .gitignore
-├── .prettierignore
-├── .prettierrc.yml
-├── .solhint.json
-├── foundry.toml
-└── remappings.txt
-```
+- include built-in LP locker.
 
-### VSCode Integration
+## Example on Testnet:
 
-This template is IDE agnostic, but for the best user experience, you may want to use it in VSCode alongside Nomic
-Foundation's [Solidity extension](https://marketplace.visualstudio.com/items?itemName=NomicFoundation.hardhat-solidity).
+The following is an example for how the concept works on Sepolia:
 
-For guidance on how to integrate a Foundry project in VSCode, please refer to this
-[guide](https://book.getfoundry.sh/config/vscode).
-
-### GitHub Actions
-
-This template comes with GitHub Actions pre-configured. Your contracts will be linted and tested on every push and pull
-request made to the `main` branch.
-
-You can edit the CI script in [.github/workflows/ci.yml](./.github/workflows/ci.yml).
-
-## Installing Dependencies
-
-Foundry typically uses git submodules to manage dependencies, but this template uses Node.js packages because
-[submodules don't scale](https://twitter.com/PaulRBerg/status/1736695487057531328).
-
-This is how to install dependencies:
-
-1. Install the dependency using your preferred package manager, e.g. `bun install dependency-name`
-   - Use this syntax to install from GitHub: `bun install github:username/repo-name`
-2. Add a remapping for the dependency in [remappings.txt](./remappings.txt), e.g.
-   `dependency-name=node_modules/dependency-name`
-
-Note that OpenZeppelin Contracts is pre-installed, so you can follow that as an example.
-
-## Writing Tests
-
-To write a new test contract, you start by importing [PRBTest](https://github.com/PaulRBerg/prb-test) and inherit from
-it in your test contract. PRBTest comes with a pre-instantiated [cheatcodes](https://book.getfoundry.sh/cheatcodes/)
-environment accessible via the `vm` property. If you would like to view the logs in the terminal output you can add the
-`-vvv` flag and use [console.log](https://book.getfoundry.sh/faq?highlight=console.log#how-do-i-use-consolelog).
-
-This template comes with an example test contract [Foo.t.sol](./test/Foo.t.sol)
-
-## Usage
-
-This is a list of the most frequently needed commands.
-
-### Build
-
-Build the contracts:
-
-```sh
-$ forge build
-```
-
-### Clean
-
-Delete the build artifacts and cache directories:
-
-```sh
-$ forge clean
-```
-
-### Compile
-
-Compile the contracts:
-
-```sh
-$ forge build
-```
-
-### Coverage
-
-Get a test coverage report:
-
-```sh
-$ forge coverage
-```
-
-### Deploy
-
-Deploy to Anvil:
-
-```sh
-$ forge script script/Deploy.s.sol --broadcast --fork-url http://localhost:8545
-```
-
-For this script to work, you need to have a `MNEMONIC` environment variable set to a valid
-[BIP39 mnemonic](https://iancoleman.io/bip39/).
-
-For instructions on how to deploy to a testnet or mainnet, check out the
-[Solidity Scripting](https://book.getfoundry.sh/tutorials/solidity-scripting.html) tutorial.
-
-### Format
-
-Format the contracts:
-
-```sh
-$ forge fmt
-```
-
-### Gas Usage
-
-Get a gas report:
-
-```sh
-$ forge test --gas-report
-```
-
-### Lint
-
-Lint the contracts:
-
-```sh
-$ bun run lint
-```
-
-### Test
-
-Run the tests:
-
-```sh
-$ forge test
-```
-
-Generate test coverage and output result to the terminal:
-
-```sh
-$ bun run test:coverage
-```
-
-Generate test coverage with lcov report (you'll have to open the `./coverage/index.html` file in your browser, to do so
-simply copy paste the path):
-
-```sh
-$ bun run test:coverage:report
-```
-
-## Related Efforts
-
-- [abigger87/femplate](https://github.com/abigger87/femplate)
-- [cleanunicorn/ethereum-smartcontract-template](https://github.com/cleanunicorn/ethereum-smartcontract-template)
-- [foundry-rs/forge-template](https://github.com/foundry-rs/forge-template)
-- [FrankieIsLost/forge-template](https://github.com/FrankieIsLost/forge-template)
-
-## License
-
-This project is licensed under MIT.
-
-## Supported Chains
-
-Networks where Uniswap V3 and its forks (e.g. PancakeSwap V3) are deployed:
+- user 1: create token, uni v3 pool and initialize price 1:1 [tx](https://sepolia.etherscan.io/tx/0x396c5e18ef33f81c7badf9789c4c5c28016b607f2cb98837ef5406a4775eeb3d)
+- user 1 adds 0.01 ETH [tx](https://sepolia.etherscan.io/tx/0x0ab229f7c00d62a555010b111f5c73d596173df5492ecf5c9fb456844559bc0e)
+- user 2 buys 0.001ETH [tx](https://sepolia.etherscan.io/tx/0xbf4ed445a6ae9470482e2de5f9db231ef06556041e5a98a22cd69472bbdd532d)
+- user 3 adds 0.01ETH [tx](https://sepolia.etherscan.io/tx/0xe19b684f173b151dc3ffe6f77a3168e3f5ebbf0f1f4bfd79680362e257f76538)
+- user 2 sells tokens [tx](https://sepolia.etherscan.io/tx/0x37eacc803c1e9f93a4a5350943e7396fc71a4669de24a7f2c70cd0ea0f6dc75a)
+- collect and distribute trading fees, takes 2 minutes to fully distribute among LPers [tx](https://sepolia.etherscan.io/tx/0xf7fec3d716c6db4840935b9fcdf4cf6f8a791e854f473b1d3c7a994e5cccf693)
+- user 3 claims trading fees after 2 mins [tx](https://sepolia.etherscan.io/tx/0x3105e38046a105088f21da4b88e861a08a301abc1aaf3cf206f300d5106a54be)
+- user 3 removes LP [tx](https://sepolia.etherscan.io/tx/0xc466b52a88913f188896e011556aa3886fdc5b420d74c194f05edc935d1024f7)
+- user 1 claims trading fees [tx](https://sepolia.etherscan.io/tx/0xfec98aa7c46a5563f151920014e51ea3772c9c561f400a610eb0e6d508069220)
+- user 1 removes LP, it has removed at most 0.1ETH which was has been put initially [tx](https://sepolia.etherscan.io/tx/0x0db7e0ee8edd5ce2f5f888bbc7bdf0864d7a547b0f0f09b83715d13bd5bbc03a )
